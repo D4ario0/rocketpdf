@@ -1,13 +1,14 @@
 import typer
-from doc_parser import *
+from pathlib import Path
 from typing import List, Optional
+from .doc_parser import *
 
-rocketpdf = typer.Typer(name="rocket-pdf")
+rocketpdf = typer.Typer(name="rocketpdf")
 
 
 @rocketpdf.command()
 def parsedoc(
-    filename: str,
+    filename: Path,
     args: Optional[List[str]] = typer.Argument(None),
     output: Optional[str] = typer.Option(None, "-o", "--output"),
 ) -> None:
@@ -15,43 +16,43 @@ def parsedoc(
     Convert a DOCX file to PDF.
 
     Args:
-        filename (str): The path to the DOCX file.
+        filename (Path): The path to the DOCX file.
         args (Optional[List[str]]): Additional commands to execute.
         output (Optional[str]): The output filename for the PDF.
     """
     try:
         file = convert_docx_pdf(filename)
-        if args:
-            file = __execute(args, file)
-        else:
-            output_filename = output or filename.replace(".docx", ".pdf")
-            with to_PDF(file) as doc:
-                doc.save(output_filename)
+        output_filename = output or filename.with_suffix(".pdf")
+        file = __execute(args, file, output_filename) if args else file
+        if not file:
+            return
+        with to_PDF(file) as doc:
+            doc.save(output_filename)
     except Exception as e:
-        typer.echo(f"Error parsing document: {e}", err=True)
+        typer.echo(f"Error parsing document")
 
 
 @rocketpdf.command()
 def parsepdf(
-    filename: str, output: Optional[str] = typer.Option(None, "-o", "--output")
+    filename: Path, output: Optional[str] = typer.Option(None, "-o", "--output")
 ) -> None:
     """
     Convert a PDF file to DOCX.
 
     Args:
-        filename (str): The path to the PDF file.
+        filename (Path): The path to the PDF file.
         output (Optional[str]): The output filename for the DOCX.
     """
     try:
-        output_path = output or filename.replace(".pdf", ".docx")
+        output_path = output or filename.with_suffix(".docx")
         convert_pdf_docx(filename, output_path)
     except Exception as e:
-        typer.echo(f"Error parsing PDF: {e}", err=True)
+        typer.echo(f"Error parsing PDF")
 
 
 @rocketpdf.command()
 def extract(
-    filename: str,
+    file_path: Path,
     start: int,
     end: Optional[int] = None,
     args: Optional[List[str]] = typer.Argument(None),
@@ -61,30 +62,31 @@ def extract(
     Extract pages from a PDF file.
 
     Args:
-        filename (str): The path to the PDF file.
+        filename (Path): The path to the PDF file.
         start (int): The starting page number.
         end (Optional[int]): The ending page number. Defaults to None.
         args (Optional[List[str]]): Additional commands to execute.
         output (Optional[str]): The output filename for the extracted pages.
     """
     try:
+        if args and args[0].isdigit():
+            end = int(args.pop(0))
         suffix = f" - {end}" if end else ""
-        if end is None:
-            end = start
-        file = extract_pages(filename, start, end)
-        if args:
-            file = __execute(args, file)
-        else:
-            output_filename = output or f"{filename} page(s) {start}{suffix}.pdf"
-            with to_PDF(file) as doc:
-                doc.save(output_filename)
+        end = end or start
+        file = extract_pages(file_path, start, end)
+        output_filename = output or f"{file_path.stem} page(s) {start}{suffix}.pdf"
+        file = __execute(args, file, output_filename) if args else file
+        if not file:
+            return
+        with to_PDF(file) as doc:
+            doc.save(output_filename)
     except Exception as e:
-        typer.echo(f"Error extracting pages: {e}", err=True)
+        typer.echo(f"Error extracting pages")
 
 
 @rocketpdf.command()
 def merge(
-    pdflist: List[str], output: Optional[str] = typer.Option(None, "-o", "--output")
+    pdflist: List[Path], output: Optional[str] = typer.Option(None, "-o", "--output")
 ) -> None:
     """
     Merge multiple PDF files into one.
@@ -95,23 +97,23 @@ def merge(
         output (Optional[str]): The output filename for the merged PDF.
     """
     try:
-        sep = find_non_pdf(pdflist)
+        sep = __find_non_pdf(pdflist)
         merge_queue = pdflist[:sep]
         args = pdflist[sep:]
         file = merge_pdfs(merge_queue)
-        if args:
-            file = __execute(args, file)
-        else:
-            output_filename = output or "merged.pdf"
-            with to_PDF(file) as doc:
-                doc.save(output_filename)
+        output_filename = output or "merged.pdf"
+        file = __execute(args, file, output_filename) if args else file
+        if not file:
+            return
+        with to_PDF(file) as doc:
+            doc.save(output_filename)
     except Exception as e:
-        typer.echo(f"Error merging PDFs: {e}", err=True)
+        typer.echo(f"Error merging PDFs")
 
 
 @rocketpdf.command()
 def compress(
-    filename: str,
+    file_path: Path,
     args: Optional[List[str]] = typer.Argument(None),
     output: Optional[str] = typer.Option(None, "-o", "--output"),
 ) -> None:
@@ -124,19 +126,19 @@ def compress(
         output (Optional[str]): The output filename for the compressed PDF.
     """
     try:
-        file = compress_pdf(filename)
-        if args:
-            file = __execute(args, file)
-        else:
-            output_filename = output or f"{filename}-compressed.pdf"
-            with to_PDF(file) as doc:
-                doc.save(output_filename)
+        file = compress_pdf(file_path)
+        output_filename = output or f"{file_path}-compressed.pdf"
+        file = __execute(args, file, output_filename) if args else file
+        if not file:
+            return
+        with to_PDF(file) as doc:
+            doc.save(output_filename)
     except Exception as e:
-        typer.echo(f"Error compressing PDF: {e}", err=True)
+        typer.echo(f"Error compressing PDF")
 
 
 @rocketpdf.command()
-def parseall(directory: str) -> None:
+def parsedocxs(directory: Path) -> None:
     """
     Convert all DOCX files in a directory to PDF.
 
@@ -146,12 +148,12 @@ def parseall(directory: str) -> None:
     try:
         parse_dir(directory)
     except Exception as e:
-        typer.echo(f"Error parsing all documents in directory: {e}", err=True)
+        typer.echo(f"Error parsing all documents in directory")
 
 
 @rocketpdf.command()
 def mergeall(
-    directory: str,
+    directory: Path,
     args: Optional[List[str]] = typer.Argument(None),
     output: Optional[str] = typer.Option(None, "-o", "--output"),
 ) -> None:
@@ -159,23 +161,27 @@ def mergeall(
     Merge all PDF files in a directory into one.
 
     Args:
-        directory (str): The path to the directory containing PDF files.
+        directory (Path): The path to the directory containing PDF files.
         args (Optional[List[str]]): Additional commands to execute.
         output (Optional[str]): The output filename for the merged PDF.
     """
     try:
         file = merge_dir(directory)
-        if args:
-            file = __execute(args, file)
-        output_filename = output or "merged.pdf"
+        output_filename = output or f"{directory.parent.stem}-merged.pdf"
+        file = __execute(args, file, output_filename) if args else file
+        if not file:
+            return
         with to_PDF(file) as doc:
             doc.save(output_filename)
     except Exception as e:
-        typer.echo(f"Error merging all PDFs in directory: {e}", err=True)
+        typer.echo(f"Error merging all PDFs in directory")
+
+
+# Helper functions
 
 
 # Function to chain arguments
-def __execute(args: List[str], file: bytes) -> bytes:
+def __execute(args: List[str], file: bytes, output:Path) -> bytes|None:
     try:
         if args:
             next_command = args.pop(0)
@@ -185,7 +191,7 @@ def __execute(args: List[str], file: bytes) -> bytes:
                 new_file = extract_pages(file, start, end)
                 return __execute(args, new_file)
             elif next_command == "merge":
-                sep = find_non_pdf(args)
+                sep = __find_non_pdf(args)
                 merge_queue = args[:sep]
                 merge_queue.insert(0, file)
                 new_file = merge_pdfs(merge_queue)
@@ -194,11 +200,21 @@ def __execute(args: List[str], file: bytes) -> bytes:
                 new_file = compress_pdf(file)
                 return __execute(args, new_file)
             elif next_command == "parsepdf":
-                convert_pdf_docx(file, "result.docx")
-                return file
+                output_path = output.suffix(".docx")
+                convert_pdf_docx(file, output_path)
+                return
             else:
-                typer.echo("Not a valid command", err=True)
+                typer.echo(f"Not a valid command: {next_command}", err=True)
         return file
     except Exception as e:
         typer.echo(f"Error executing command: {e}", err=True)
         return file
+
+
+# Function to find next argument
+def __find_non_pdf(args: List[str]) -> int:
+    n = len(args)
+    for i in range(n):
+        if not args[i].endswith(".pdf"):
+            return i
+    return n

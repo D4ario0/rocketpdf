@@ -1,3 +1,3 @@
 from .rocketpdf import rocketpdf
 
-__all__ = ("rocketpdf",)
+__all__ = ["rocketpdf"]
