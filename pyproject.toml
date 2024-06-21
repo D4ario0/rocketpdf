@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rocketpdf"
-version = "0.1.1"
+version = "0.1.2"
 description = "Comprehensive CLI tool for pdf handling"
 authors = ["D4ario0 <alexgarciat00@gmail.com>"]
 license = "AGPL-3.0"
