@@ -1,4 +1,4 @@
-[![](https://img.shields.io/badge/github-purple?style=for-the-badge)](https://github.com/D4ario0/rocketpdf/) [![](https://img.shields.io/badge/Pypi-blue?style=for-the-badge)]((https://pypi.org/project/rocketpdf/))
+[![](https://img.shields.io/badge/github-purple?style=for-the-badge)](https://github.com/D4ario0/rocketpdf/) [![](https://img.shields.io/badge/Pypi-blue?style=for-the-badge)](https://pypi.org/project/rocketpdf/)
 # rocketpdf :rocket:
 rocketpdf is python-based powerful CLI app that take basic pdf operations and elevates the user experience to the next level, allowing the user to not only convert and modify existing pdf files, but to chain operations and get a polished final result in a single swing!
 
