@@ -7,6 +7,7 @@ from .doc_parser import (
     compress_pdf,
     parse_dir,
     merge_dir,
+    execute,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "compress_pdf",
     "parse_dir",
     "merge_dir",
+    "execute",
 ]

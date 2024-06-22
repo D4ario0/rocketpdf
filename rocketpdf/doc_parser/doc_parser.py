@@ -1,11 +1,11 @@
 import logging
 from os import environ
-from typing import List
 from pathlib import Path
+from typing import List, Tuple
 from multiprocessing import Pool
 from .utils import *
 
-#Disable tqdm progress bar
+# Disable tqdm progress bar
 environ["TQDM_DISABLE"] = "1"
 
 # Third-party library imports
@@ -61,10 +61,10 @@ def merge_pdfs(pdf_list: List[PDF]) -> bytes:
 
 
 @spinner("Extracting pages from PDF...", "PDF pages extracted successfully")
-def extract_pages(file: PDF, start: int, end: int) -> bytes:
+def extract_pages(file: PDF, start: int, end: int = None) -> bytes:
     if isinstance(file, Path):
         validate_path(file)
-
+    end = end or start
     with fitz.open() as new_file:
         with to_PDF(file) as temp:
             if start < 1 or end > len(temp):
@@ -116,3 +116,49 @@ def merge_dir(path: Path) -> bytes:
 
     pdflist = [file for file in path.iterdir() if file.suffix == ".pdf"]
     return merge_pdfs(pdflist)
+
+
+# Function to chain arguments
+@spinner(False)
+def execute(args: List[str], file: bytes, output: Path = None) -> bytes | None:
+    while args:
+        next_command, arg = __get_expression(args)
+        try:
+            if next_command == "extract":
+                start = int(arg[0])
+                if len(arg) > 2:
+                    raise ValueError(f"Invalid number of arguments for {next_command}")
+                end = int(arg[1]) if len(arg) > 1 else None
+                new_file = extract_pages(file, start, end)
+
+            if next_command == "merge":
+                new_file = merge_pdfs([file] + list(arg))
+
+            if next_command == "compress":
+                if arg and len(arg) > 0:
+                    raise ValueError(f"Invalid number of arguments for {next_command}")
+                new_file = compress_pdf(file)
+
+            if next_command == "parsepdf":
+                if arg and len(arg) > 1:
+                    raise ValueError(f"Invalid number of arguments for {next_command}")
+                output_path = Path(arg[0]) if arg else output.with_suffix(".docx")
+                convert_pdf_docx(file, output_path)
+                return
+
+            return execute(args, new_file, output)
+        except:
+            return file
+    return file
+
+
+def __get_expression(args: List[str]) -> Tuple[str, Tuple[str | int | Path]]:
+    commands = {"merge", "extract", "compress", "parsepdf"}
+    command = args.pop(0)
+    if command not in commands:
+        raise ValueError("Not a valid command")
+
+    expression = []
+    while args and args[0] not in commands:
+        expression.append(args.pop(0))
+    return command, tuple(expression)

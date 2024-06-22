@@ -7,8 +7,9 @@ console = Console()
 
 def spinner(
     task_description: str = "Processing...",
-    success_message: str = "Succesfully completed",
-    error_message: str = "An error ocurred",
+    success_msg: str = "Succesfully completed",
+    error_msg: str = "An error ocurred",
+    message_display: bool = True,
 ) -> wraps:
     def decorator(func):
         @wraps(func)
@@ -23,14 +24,15 @@ def spinner(
                     result = func(*args, **kwargs)
                     progress.update(task, advance=1, visible=False)
                     progress.stop()
-                    console.print(
-                        f":white_check_mark: {success_message}", style="green"
-                    )
+                    if message_display:
+                        console.print(
+                            f":white_check_mark: {success_msg}", style="green"
+                        )
                     return result
                 except Exception as e:
                     progress.update(task, advance=1, visible=False)
                     progress.stop()
-                    console.print(f":x: {error_message}: {str(e)}", style="red")
+                    console.print(f":x: {error_msg}: {str(e)}", style="red")
                     raise e
 
         return wrapper
