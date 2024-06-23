@@ -11,7 +11,7 @@ environ["TQDM_DISABLE"] = "1"
 # Third-party library imports
 import fitz
 import docx2pdf
-from pdf2docx import Converter
+from pdf2docx import parse
 
 
 @spinner("Converting DOCX to PDF...", "DOCX converted successfully")
@@ -36,15 +36,12 @@ def convert_docx_pdf(file_path: Path) -> bytes:
 
 
 @spinner("Converting PDF to DOCX...", "PDF converted successfully")
-def convert_pdf_docx(file: PDF, docx_path: Path) -> None:
+def convert_pdf_docx(file_path: Path, docx_path: Path) -> None:
     logging.getLogger().setLevel(logging.ERROR)  # Disable logging
-    if isinstance(file, Path):
-        validate_path(file)
 
-    converter = Converter(str(file))
-    converter.convert(str(docx_path))
-    converter.close()
-    return
+    validate_path(file_path)
+
+    parse(file_path, docx_path)
 
 
 @spinner("Merging PDFs...", "PDFs merged successfully")
@@ -118,47 +115,54 @@ def merge_dir(path: Path) -> bytes:
     return merge_pdfs(pdflist)
 
 
+# Command chaining variables and functions
+COMMANDS = {
+    "extract": extract_pages,
+    "merge": merge_pdfs,
+    "compress": lambda file, *args: compress_pdf(file),
+}
+
+
 # Function to chain arguments
-@spinner(False)
-def execute(args: List[str], file: bytes, output: Path = None) -> bytes | None:
-    while args:
-        next_command, arg = __get_expression(args)
-        try:
-            if next_command == "extract":
-                start = int(arg[0])
-                if len(arg) > 2:
-                    raise ValueError(f"Invalid number of arguments for {next_command}")
-                end = int(arg[1]) if len(arg) > 1 else None
-                new_file = extract_pages(file, start, end)
-
-            if next_command == "merge":
-                new_file = merge_pdfs([file] + list(arg))
-
-            if next_command == "compress":
-                if arg and len(arg) > 0:
-                    raise ValueError(f"Invalid number of arguments for {next_command}")
-                new_file = compress_pdf(file)
-
-            if next_command == "parsepdf":
-                if arg and len(arg) > 1:
-                    raise ValueError(f"Invalid number of arguments for {next_command}")
-                output_path = Path(arg[0]) if arg else output.with_suffix(".docx")
-                convert_pdf_docx(file, output_path)
-                return
-
-            return execute(args, new_file, output)
-        except:
-            return file
-    return file
+def execute(params: List[str], file: PDF, output: Path = None) -> bytes | None:
+    try:
+        if params:
+            next_command, args = __next_command(params)
+            new_file = COMMANDS[next_command](file, *args)
+            return execute(params, new_file, output)
+        return file
+    except:
+        return file
 
 
-def __get_expression(args: List[str]) -> Tuple[str, Tuple[str | int | Path]]:
-    commands = {"merge", "extract", "compress", "parsepdf"}
-    command = args.pop(0)
-    if command not in commands:
+# Funtion to extract chained expressions
+def __next_command(params: List[str]) -> Tuple[str, Tuple]:
+    command = params.pop(0)
+    if command not in COMMANDS:
         raise ValueError("Not a valid command")
 
-    expression = []
-    while args and args[0] not in commands:
-        expression.append(args.pop(0))
-    return command, tuple(expression)
+    if command == "extract":
+        try:
+            start = int(params.pop(0))
+            end = int(params.pop(0)) if params and params[0] not in COMMANDS else start
+        except TypeError:
+            raise ValueError(f"Invalid range argument for {command}")
+        return command, (start, end)
+
+    if command == "merge":
+        sep = find_non_pdf(params)
+        pdflist = [Path(params.pop(0)) for _ in range(sep)]
+        if not pdflist:
+            raise ValueError(f"No file given for {command}")
+        return command, tuple(pdflist)
+
+    return command, tuple()
+
+
+# Function to find next argument
+def find_non_pdf(params: List[str]) -> int:
+    n = len(params)
+    for i in range(n):
+        if not params[i].endswith(".pdf"):
+            return i
+    return n

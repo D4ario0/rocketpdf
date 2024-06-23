@@ -97,7 +97,7 @@ def merge(
         output (Optional[str]): The output filename for the merged PDF.
     """
     try:
-        sep = __find_non_pdf(pdflist)
+        sep = find_non_pdf(pdflist)
         merge_queue = pdflist[:sep]
         args = pdflist[sep:]
         file = merge_pdfs(merge_queue)
@@ -175,12 +175,3 @@ def mergeall(
             doc.save(output_filename)
     except Exception as e:
         typer.echo(f"Error merging all PDFs in directory")
-
-
-# Function to find next argument
-def __find_non_pdf(args: List[str]) -> int:
-    n = len(args)
-    for i in range(n):
-        if not args[i].endswith(".pdf"):
-            return i
-    return n
