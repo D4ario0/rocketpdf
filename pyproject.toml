@@ -7,10 +7,9 @@ authors = [{name="D4ario0", email="alexgarciat00@gmail.com"}]
 license = {file = "LICENSE"}
 readme = "README.md"
 dependencies = [
+    "click>=8.1.7",
     "pymupdf>=1.24.12",
     "comtypes>=1.4.8; sys_platform == 'win32'",
-    "unoconv>=0.9.0; sys_platform == 'linux'",
-    "click>=8.1.7",
 ]
 
 [tool.ruff]

@@ -1,8 +1,10 @@
 from pathlib import Path
 
-from click import confirm, prompt
+from click import confirm, prompt, secho
 
-from ..clitools import prompter
+from ..clitools import Colors, Cursors, prompter
+
+OUT_STREAM = None
 
 
 def files_with_suffix(directory: Path, ext: str) -> list[Path]:
@@ -13,12 +15,13 @@ def files_with_suffix(directory: Path, ext: str) -> list[Path]:
     return [f.name for f in directory.iterdir() if f.is_file() and f.suffix.lower() == ext]
 
 
-def handle_input(ext: str) -> str:
+def handle_in_file(ext: str) -> str:
     """
     Handle file input with support for direct file path or selection from directory.
     """
     # Prompt the user for a filename or directory path.
-    target = prompt("Enter filename or directory (.)")
+    target = prompt("Enter filename or directory (current dir [.])")
+
     path = Path(target).resolve()
 
     # If it is a directory.
@@ -58,7 +61,7 @@ def handle_input(ext: str) -> str:
     raise FileNotFoundError(f"Invalid file or directory: {target}")
 
 
-def handle_output(output: str | None, input: str, ext: str) -> str:
+def handle_out_file(output: str | None, input: str, ext: str) -> str:
     """
     Handle output file path with checks for file existence and confirmation for overwriting.
     If output is not provided, it will be constructed by replacing the input file's extension.
@@ -86,3 +89,25 @@ def handle_output(output: str | None, input: str, ext: str) -> str:
 
     # Return the resolved output file path
     return str(output_path)
+
+
+def handle_range(from_page: int, to_page: int | None, doc_length: int) -> tuple[int, int]:
+    # If not to_page is given assume we are extracting a single page and match to first index
+    if to_page is None:
+        to_page = from_page
+
+    if not 0 < from_page <= to_page <= doc_length:
+        raise IndexError(
+            f"Invalid Page Range: {from_page} to {to_page}. Min: 1 | Max: {doc_length}"
+        )
+
+    return from_page - 1, to_page - 1  # Convert to 0-based index
+
+
+def page_ext_str_builder(in_filename: str, from_page: int, to_page: int | None) -> str:
+    # Complex string manip. e.g. file[1-2] or file[3]
+    return f"{Path(in_filename).stem}[{from_page}{f"-{to_page}" if to_page and to_page != from_page else""}]"
+
+
+def log_err(e: Exception) -> None:
+    secho(f"{Cursors.EXIT_CURSOR} {str(e)}", fg=Colors.RED, file=OUT_STREAM)

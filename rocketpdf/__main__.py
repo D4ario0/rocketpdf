@@ -24,7 +24,7 @@ def rpdf_cli(ctx: click.Context):
         # Extract the function name and ignore the description and map to function
         subcommand = cli.commands[choice.split(maxsplit=1)[0]]
 
-        ctx.invoke(subcommand, input=None)
+        ctx.invoke(subcommand)
 
 
 cli = Commands(rpdf_cli)

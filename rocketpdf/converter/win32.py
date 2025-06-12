@@ -72,7 +72,7 @@ class WindowsConverterEngine:
         document = None
         try:
             application = self._app_launcher(app)
-            # application.Visible = 1 if app == "PowerPoint.Application" else 0
+            application.visible = 1
             document = getattr(application, attr).Open(input_file)
             document.SaveAs(output_file, FileFormat=save_format.value)
         except Exception as e:
